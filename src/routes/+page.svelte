@@ -1,6 +1,4 @@
 <script lang="ts">
-	import Message from '@feltjs/felt-ui/Message.svelte';
-
 	import Mreows from '$lib/Mreows.svelte';
 
 	let mreows: Array<{icon: string}> | undefined;
@@ -9,15 +7,8 @@
 <main class="markup column">
 	<section>
 		<header class="centered-hz">
-			<h1>felt<small><a href="https://github.com/feltjs">💚</a></small>template</h1>
+			<h1><a href="https://github.com/ryanatkn/ssag">ssag</a></h1>
 		</header>
-		<Message
-			><span slot="icon"
-				>{#if mreows}{mreows[0].icon}{:else}✨{/if}</span
-			><span
-				>hello, welcome to <a href="https://github.com/feltjs/felt-template">felt-template</a></span
-			></Message
-		>
 	</section>
 	<Mreows bind:mreows />
 </main>

@@ -1,9 +1,9 @@
 {
-  "name": "felt-template",
-  "description": "a static web app and Node library template with SvelteKit, Gro, and Felt",
+  "name": "@ryanatkn/ssag",
+  "description": "ssag",
   "version": "0.0.1",
   "type": "module",
-  "homepage": "https://template.felt.dev",
+  "homepage": "https://www.ssag.dev/",
   "engines": {
     "node": ">=18.6"
   },
