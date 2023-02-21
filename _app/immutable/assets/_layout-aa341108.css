@@ -930,12 +930,12 @@ summary:active {
 	--button_color: transparent;
 	--button_color_hover: var(--tint_light_5);
 }
-/* global stylesheet imported by `src/routes/__layout.svelte */
-
-/*
-
 :root {
-  --some_stylish_property: 100%;
+	--bg: hsl(23, 37%, 13%);
+	--text_color: hsl(23, 8%, 85%);
+	--text_color_light: hsl(23, 8%, 65%);
+	--button_color: var(--bg_color_fg);
+	--button_color_hover: var(--bg);
+	--button_color_active: var(--bg);
+	--button_color_disabled: transparent;
 }
-
-*/
