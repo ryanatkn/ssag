@@ -8,11 +8,11 @@
     "node": ">=18.6"
   },
   "scripts": {
-    "start": "gro dev",
-    "dev": "gro dev",
-    "build": "gro build",
-    "test": "gro test",
-    "deploy": "gro deploy"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "devDependencies": {
     "@feltjs/eslint-config": "^0.2.1",
