@@ -1,7 +1,4 @@
 <script lang="ts">
-	import Mreows from '$lib/Mreows.svelte';
-
-	let mreows: Array<{icon: string}> | undefined;
 </script>
 
 <main class="markup column">
@@ -10,7 +7,6 @@
 			<h1><a href="https://github.com/ryanatkn/ssag">ssag</a></h1>
 		</header>
 	</section>
-	<Mreows bind:mreows />
 </main>
 
 <style>
