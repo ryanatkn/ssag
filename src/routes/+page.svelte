@@ -1,22 +1,18 @@
 <script lang="ts">
+	import {Portal} from '@feltcoop/dealt';
+
+	import SsagScene from '$routes/SsagScene.svelte';
 </script>
 
-<main class="markup column">
-	<section>
-		<header class="centered-hz">
-			<h1><a href="https://github.com/ryanatkn/ssag">ssag</a></h1>
-		</header>
-	</section>
+<main>
+	<Portal>
+		<SsagScene />
+	</Portal>
 </main>
 
 <style>
 	main {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		margin: 0 auto;
-	}
-	h1 {
-		text-align: center;
+		position: absolute;
+		inset: 0;
 	}
 </style>
