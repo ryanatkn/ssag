@@ -26,19 +26,12 @@ const meta: StageMeta = {
 export class Stage0 extends Stage {
 	static override meta = meta;
 
-	ready = false;
-	finished = false; // stops when the conditions are met and the player collides with the exit
-
 	// these are instantiated in `setup`
 	player!: Entity<EntityCircle>;
 	bounds!: Entity<EntityPolygon>;
 
 	// TODO not calling `setup` first is error-prone
 	override async setup(): Promise<void> {
-		// TODO refactor
-		if (this.ready) return;
-		this.ready = true;
-
 		const collisions = (this.collisions = new Collisions());
 		this.sim = new Simulation(collisions);
 
