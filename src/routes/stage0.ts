@@ -23,11 +23,6 @@ const meta: StageMeta = {
 	icon: '🐭',
 };
 
-interface ExitEntity {
-	stage_name: string;
-	entity: Entity;
-}
-
 export class Stage0 extends Stage {
 	static override meta = meta;
 
@@ -36,7 +31,6 @@ export class Stage0 extends Stage {
 
 	// these are instantiated in `setup`
 	player!: Entity<EntityCircle>;
-	exits: Map<Entity, ExitEntity> = new Map();
 	bounds!: Entity<EntityPolygon>;
 
 	// TODO not calling `setup` first is error-prone
