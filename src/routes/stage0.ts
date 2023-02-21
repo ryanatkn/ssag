@@ -108,8 +108,7 @@ export class Stage0 extends Stage {
 		renderer.render(this.sim.entities);
 	}
 
-	shouldRestart = false; // making this a flag because we want to do it after updating, otherwise disposed entities get updated and throw errors
-
+	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed entities get updated and throw errors
 	restart(): void {
 		this.shouldRestart = true;
 	}
