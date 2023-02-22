@@ -223,7 +223,7 @@ export class Stage0 extends Stage {
 
 	goingToHref: Promise<void> | null = null;
 
-	goToHref(href: string, opts: Parameters<typeof goto>[1]): void | Promise<void> {
+	goToHref(href: string, opts?: Parameters<typeof goto>[1]): void | Promise<void> {
 		if (this.goingToHref) return this.goingToHref;
 		return (this.goingToHref = goto(href, opts));
 	}
