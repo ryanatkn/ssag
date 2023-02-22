@@ -29,6 +29,8 @@ const meta: StageMeta = {
 export class Stage0 extends Stage {
 	static override meta = meta;
 
+	place: 'inside' | 'outside' = 'outside';
+
 	// these are instantiated in `setup`
 	player!: Entity<EntityCircle>;
 	bounds!: Entity<EntityPolygon>;
@@ -80,7 +82,7 @@ export class Stage0 extends Stage {
 		portal.color = COLOR_DANGER;
 		portal.strength = 100_000_000;
 		this.addEntity(portal);
-		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 0.5);
+		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
 		console.log('set up');
 	}
 
@@ -125,8 +127,14 @@ export class Stage0 extends Stage {
 
 		updateEntityDirection(controller, player, this.$camera, this.$viewport, this.$layout);
 
-		if (!this.bounds.body.collides(this.player.body, collisionResult)) {
-			this.restart();
+		if (this.place === 'inside') {
+			if (!portal.body.collides(player.body, collisionResult)) {
+				this.goOutside();
+			}
+		} else {
+			if (!this.bounds.body.collides(player.body, collisionResult)) {
+				this.restart();
+			}
 		}
 
 		if (this.shouldRestart) {
@@ -144,13 +152,32 @@ export class Stage0 extends Stage {
 		this.shouldRestart = true;
 	}
 
+	// TODO refactor all of this
 	goInside(): void {
-		this.obstacle.invisible = true;
-		this.obstacle.ghostly = true;
-		this.portal.color = COLOR_DEFAULT;
-		this.portal.radius = 250 / 2;
-		this.portal.ghostly = true;
-		this.portal.x = 125;
-		this.portal.y = 125;
+		if (this.place === 'inside') return;
+		this.place = 'inside';
+		const {obstacle, portal} = this;
+		obstacle.invisible = true;
+		obstacle.ghostly = true;
+		portal.color = COLOR_DEFAULT;
+		portal.radius = 250 / 2; // TODO animate the radius
+		portal.ghostly = true;
+		portal.x = 125;
+		portal.y = 125;
+	}
+
+	goOutside(): void {
+		if (this.place === 'outside') return;
+		this.place = 'outside';
+		const {obstacle, portal} = this;
+		obstacle.invisible = false;
+		obstacle.ghostly = false;
+		portal.color = this.portalHitboxOuter.body.collides(obstacle.body, collisionResult)
+			? COLOR_EXIT
+			: COLOR_DANGER;
+		portal.radius = this.player.radius / 3;
+		portal.ghostly = false;
+		portal.x = 120;
+		portal.y = 100;
 	}
 }
