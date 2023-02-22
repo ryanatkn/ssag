@@ -52,8 +52,8 @@
 	// TODO abstract this
 	const destroyStage = () => {
 		if (!stage) return;
-		console.log(`disposing stage`, stage);
-		stage.dispose();
+		console.log(`destroying stage`, stage);
+		stage.destroy();
 		stage = null;
 	};
 	onDestroy(destroyStage);

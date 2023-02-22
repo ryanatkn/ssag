@@ -11,6 +11,9 @@ import {
 	type EntityCircle,
 	type EntityPolygon,
 	type Renderer,
+	COLOR_ROOTED,
+	COLOR_EXIT,
+	COLOR_DEFAULT,
 } from '@feltcoop/dealt';
 import {COLOR_DANGER} from './constants';
 
@@ -29,6 +32,9 @@ export class Stage0 extends Stage {
 	// these are instantiated in `setup`
 	player!: Entity<EntityCircle>;
 	bounds!: Entity<EntityPolygon>;
+	obstacle!: Entity<EntityCircle>;
+	portal!: Entity<EntityCircle>;
+	portalHitboxOuter!: Entity<EntityCircle>;
 
 	// TODO not calling `setup` first is error-prone
 	override async setup(): Promise<void> {
@@ -61,25 +67,29 @@ export class Stage0 extends Stage {
 		// TODO create these programmatically from data
 
 		// create some things
-		const obstacle = new Entity(
+		const obstacle = (this.obstacle = new Entity(
 			collisions.createCircle(150, 110, player.radius * 4) as EntityCircle,
-		);
+		));
 		obstacle.speed = 0.03;
 		this.addEntity(obstacle);
 
-		// create danger
-		const danger1 = new Entity(
+		// create the exit portal
+		const portal = (this.portal = new Entity(
 			collisions.createCircle(120, 100, player.radius / 3) as EntityCircle,
-		);
-		danger1.color = COLOR_DANGER;
-		this.addEntity(danger1);
+		));
+		portal.color = COLOR_DANGER;
+		portal.strength = 100_000_000;
+		this.addEntity(portal);
+		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 0.5);
 		console.log('set up');
 	}
 
 	override update(dt: number): void {
-		const {controller, player} = this;
+		const {controller, player, obstacle, portal} = this;
 
 		super.update(dt);
+
+		let obstacleAndPortalAreColliding = false;
 
 		this.sim.update(dt, (entityA, entityB, result) => {
 			// TODO make a better system
@@ -88,9 +98,30 @@ export class Stage0 extends Stage {
 				(entityB === player && entityA.color === COLOR_DANGER)
 			) {
 				this.restart();
+			} else if (
+				(entityA === player && entityB.color === COLOR_EXIT) ||
+				(entityB === player && entityA.color === COLOR_EXIT)
+			) {
+				this.goInside();
+			} else if (
+				(entityA === obstacle && entityB === portal) ||
+				(entityB === obstacle && entityA === portal)
+			) {
+				obstacle.color = COLOR_ROOTED;
+				portal.color = COLOR_EXIT;
+				obstacleAndPortalAreColliding = true;
 			}
 			collide(entityA, entityB, result);
 		});
+
+		if (
+			!obstacleAndPortalAreColliding &&
+			obstacle.color === COLOR_ROOTED &&
+			!this.portalHitboxOuter.body.collides(obstacle.body, collisionResult)
+		) {
+			obstacle.color = COLOR_DEFAULT;
+			portal.color = COLOR_DANGER;
+		}
 
 		updateEntityDirection(controller, player, this.$camera, this.$viewport, this.$layout);
 
@@ -111,5 +142,15 @@ export class Stage0 extends Stage {
 	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed entities get updated and throw errors
 	restart(): void {
 		this.shouldRestart = true;
+	}
+
+	goInside(): void {
+		this.obstacle.invisible = true;
+		this.obstacle.ghostly = true;
+		this.portal.color = COLOR_DEFAULT;
+		this.portal.radius = 250 / 2;
+		this.portal.ghostly = true;
+		this.portal.x = 125;
+		this.portal.y = 125;
 	}
 }
