@@ -14,8 +14,10 @@ import {
 	COLOR_ROOTED,
 	COLOR_EXIT,
 	COLOR_DEFAULT,
+	hslToHex,
 } from '@feltcoop/dealt';
 import {COLOR_DANGER} from './constants';
+import {goto} from '$app/navigation';
 
 // TODO rewrite this to use a route Svelte component? `dealt.dev/membrane/home`
 
@@ -37,6 +39,8 @@ export class Stage0 extends Stage {
 	obstacle!: Entity<EntityCircle>;
 	portal!: Entity<EntityCircle>;
 	portalHitboxOuter!: Entity<EntityCircle>;
+
+	links: Set<Entity> = new Set();
 
 	// TODO not calling `setup` first is error-prone
 	override async setup(): Promise<void> {
@@ -84,10 +88,31 @@ export class Stage0 extends Stage {
 		this.addEntity(portal);
 		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
 		console.log('set up');
+
+		// create some links
+		const link0 = new Entity(
+			collisions.createPolygon(150, 190, [
+				[-50, -13],
+				[50, -13],
+				[50, 13],
+				[-50, 13],
+			]) as EntityPolygon,
+		);
+		link0.invisible = true;
+		link0.ghostly = true;
+		link0.color = COLOR_EXIT;
+		link0.body.scale_x = 1;
+		link0.body.scale_y = 1;
+		link0.text = 'control';
+		link0.textFill = hslToHex(...COLOR_EXIT);
+		link0.fontFamily = 'monospace';
+		this.addEntity(link0);
+		(link0 as any).href = 'https://control.ssag.dev/'; // TODO upstream
+		this.links.add(link0);
 	}
 
 	override update(dt: number): void {
-		const {controller, player, obstacle, portal} = this;
+		const {controller, player, obstacle, portal, place, links} = this;
 
 		super.update(dt);
 
@@ -101,6 +126,12 @@ export class Stage0 extends Stage {
 			) {
 				this.restart();
 			} else if (
+				place === 'inside' &&
+				((entityA === player && links.has(entityB)) || (entityB === player && links.has(entityA)))
+			) {
+				const href: string = ((entityA === player ? entityB : entityA) as any).href; // TODO type upstream
+				void this.goToHref(href);
+			} else if (
 				(entityA === player && entityB.color === COLOR_EXIT) ||
 				(entityB === player && entityA.color === COLOR_EXIT)
 			) {
@@ -113,6 +144,7 @@ export class Stage0 extends Stage {
 				portal.color = COLOR_EXIT;
 				obstacleAndPortalAreColliding = true;
 			}
+			console.log(`place`, place);
 			collide(entityA, entityB, result);
 		});
 
@@ -164,6 +196,10 @@ export class Stage0 extends Stage {
 		portal.ghostly = true;
 		portal.x = 125;
 		portal.y = 125;
+		for (const link of this.links) {
+			link.invisible = false;
+			link.ghostly = false;
+		}
 	}
 
 	goOutside(): void {
@@ -179,5 +215,16 @@ export class Stage0 extends Stage {
 		portal.ghostly = false;
 		portal.x = 120;
 		portal.y = 100;
+		for (const link of this.links) {
+			link.invisible = true;
+			link.ghostly = true;
+		}
+	}
+
+	goingToHref: Promise<void> | null = null;
+
+	goToHref(href: string, opts: Parameters<typeof goto>[1]): void | Promise<void> {
+		if (this.goingToHref) return this.goingToHref;
+		return (this.goingToHref = goto(href, opts));
 	}
 }
