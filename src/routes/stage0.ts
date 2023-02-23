@@ -92,10 +92,10 @@ export class Stage0 extends Stage {
 		// create some links
 		const link0 = new Entity(
 			collisions.createPolygon(150, 190, [
-				[-50, -13],
-				[50, -13],
-				[50, 13],
-				[-50, 13],
+				[-55, -13],
+				[55, -13],
+				[55, 13],
+				[-55, 13],
 			]) as EntityPolygon,
 		);
 		link0.invisible = true;
