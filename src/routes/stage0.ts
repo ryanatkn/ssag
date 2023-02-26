@@ -10,7 +10,6 @@ import {
 	type StageMeta,
 	type CircleBody,
 	type PolygonBody,
-	type Renderer,
 	COLOR_ROOTED,
 	COLOR_EXIT,
 	COLOR_DEFAULT,
