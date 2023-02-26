@@ -1,7 +1,5 @@
-import {Collisions} from '@ryanatkn/collisions';
 import {
 	Stage,
-	Simulation,
 	Entity,
 	COLOR_PLAYER,
 	updateEntityDirection,
@@ -14,11 +12,11 @@ import {
 	COLOR_EXIT,
 	COLOR_DEFAULT,
 	hslToHex,
-	SPEED_MEDIUM,
 	PLAYER_RADIUS,
 	createEntityId,
 	type EntityData,
 	type StageData,
+	SPEED_SLOW,
 } from '@feltcoop/dealt';
 
 import {COLOR_DANGER} from './constants';
@@ -56,7 +54,7 @@ export class Stage0 extends Stage {
 			x: 100,
 			y: 147,
 			radius: PLAYER_RADIUS,
-			speed: SPEED_MEDIUM,
+			speed: SPEED_SLOW,
 			color: COLOR_PLAYER,
 		} satisfies Partial<EntityData>;
 		entities.push(controlled);
@@ -92,6 +90,27 @@ export class Stage0 extends Stage {
 			fontFamily: 'monospace',
 			href: 'https://control.ssag.dev/',
 		});
+		entities.push({
+			type: 'polygon',
+			x: 70,
+			y: 50,
+			points: [
+				[-29, -8],
+				[29, -8],
+				[29, 8],
+				[-29, 8],
+			],
+			invisible: true,
+			ghostly: true,
+			color: COLOR_EXIT,
+			scale_x: 1,
+			scale_y: 1,
+			text: 'source',
+			textFill: hslToHex(...COLOR_EXIT),
+			fontFamily: 'monospace',
+			fontSize: 16,
+			href: 'https://github.com/ryanatkn/ssag',
+		});
 
 		console.log(`toInitialData`, data);
 
@@ -100,8 +119,7 @@ export class Stage0 extends Stage {
 
 	// TODO not calling `setup` first is error-prone
 	override async setup(): Promise<void> {
-		const collisions = (this.collisions = new Collisions());
-		this.sim = new Simulation(collisions);
+		const {collisions} = this;
 
 		// TODO do this better, maybe with `tags` automatically, same with `bounds`
 		for (const entity of this.entityById.values()) {
@@ -149,16 +167,6 @@ export class Stage0 extends Stage {
 		const {controller, controlled, obstacle, portal, place, links} = this;
 		super.update(dt);
 
-		if (controlled)
-			console.log(
-				`controlled.directionX, controlled.directionY`,
-				controlled!.directionX,
-				controlled!.directionY,
-				controlled!.x,
-				controlled!.y,
-				controlled!.speed,
-			);
-
 		let obstacleAndPortalAreColliding = false;
 
 		this.sim.update(dt, (entityA, entityB, result) => {
@@ -202,14 +210,6 @@ export class Stage0 extends Stage {
 
 		if (controlled) {
 			updateEntityDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
-			// console.log(
-			// 	`controlled.directionX, controlled.directionY`,
-			// 	controlled.directionX,
-			// 	controlled.directionY,
-			// 	controlled.x,
-			// 	controlled.y,
-			// 	controlled.speed,
-			// );
 
 			if (place === 'inside') {
 				if (!portal.body.collides(controlled.body, collisionResult)) {
