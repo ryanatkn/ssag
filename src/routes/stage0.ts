@@ -1,8 +1,8 @@
 import {
 	Stage,
-	Entity,
+	Item,
 	COLOR_PLAYER,
-	updateEntityDirection,
+	updateItemDirection,
 	collide,
 	collisionResult,
 	type StageMeta,
@@ -13,10 +13,11 @@ import {
 	COLOR_DEFAULT,
 	hslToHex,
 	PLAYER_RADIUS,
-	createEntityId,
-	type EntityData,
+	createItemId,
+	type ItemData,
 	type StageData,
 	SPEED_SLOW,
+	hslToStr,
 } from '@feltcoop/dealt';
 
 import {COLOR_DANGER} from './constants';
@@ -37,30 +38,30 @@ export class Stage0 extends Stage {
 	place: 'inside' | 'outside' = 'outside';
 
 	// these are instantiated in `setup`
-	bounds!: Entity<PolygonBody>;
-	obstacle!: Entity<CircleBody>;
-	portal!: Entity<CircleBody>;
-	portalHitboxOuter!: Entity<CircleBody>;
+	bounds!: Item<PolygonBody>;
+	obstacle!: Item<CircleBody>;
+	portal!: Item<CircleBody>;
+	portalHitboxOuter!: Item<CircleBody>;
 
-	links: Set<Entity> = new Set();
+	links: Set<Item> = new Set();
 
-	static override toInitialData(): Partial<StageData> {
-		const entities: Array<Partial<EntityData>> = [];
-		const data: Partial<StageData> = {freezeCamera: true, entities};
+	static override createInitialData(): Partial<StageData> {
+		const items: Array<Partial<ItemData>> = [];
+		const data: Partial<StageData> = {freezeCamera: true, items};
 
 		const controlled = {
 			type: 'circle', // TODO needs type safety, should error when omitted
-			id: createEntityId(),
+			id: createItemId(),
 			x: 100,
 			y: 147,
 			radius: PLAYER_RADIUS,
 			speed: SPEED_SLOW,
 			color: COLOR_PLAYER,
-		} satisfies Partial<EntityData>;
-		entities.push(controlled);
+		} satisfies Partial<ItemData>;
+		items.push(controlled);
 		data.controlled = controlled.id;
 
-		entities.push({
+		items.push({
 			type: 'circle',
 			x: 150,
 			y: 110,
@@ -70,7 +71,7 @@ export class Stage0 extends Stage {
 		});
 
 		// create some links
-		entities.push({
+		items.push({
 			type: 'polygon',
 			x: 150,
 			y: 190,
@@ -90,7 +91,7 @@ export class Stage0 extends Stage {
 			fontFamily: 'monospace',
 			href: 'https://control.ssag.dev/',
 		});
-		entities.push({
+		items.push({
 			type: 'polygon',
 			x: 70,
 			y: 50,
@@ -122,17 +123,17 @@ export class Stage0 extends Stage {
 		const {collisions} = this;
 
 		// TODO do this better, maybe with `tags` automatically, same with `bounds`
-		for (const entity of this.entityById.values()) {
-			if (entity.href !== undefined) {
-				this.links.add(entity);
+		for (const item of this.itemById.values()) {
+			if (item.href !== undefined) {
+				this.links.add(item);
 			}
-			if (entity.tags?.has('obstacle')) {
-				this.obstacle = entity as Entity<CircleBody>;
+			if (item.tags?.has('obstacle')) {
+				this.obstacle = item as Item<CircleBody>;
 			}
 		}
 
 		// create the bounds around the stage edges
-		const bounds = (this.bounds = new Entity(collisions, {
+		const bounds = (this.bounds = new Item(collisions, {
 			type: 'polygon',
 			x: 0,
 			y: 0,
@@ -147,10 +148,10 @@ export class Stage0 extends Stage {
 			scale_x: this.$camera.width,
 			scale_y: this.$camera.height,
 		}));
-		this.addEntity(bounds);
+		this.addItem(bounds);
 
 		// create the exit portal
-		const portal = (this.portal = new Entity(collisions, {
+		const portal = (this.portal = new Item(collisions, {
 			type: 'circle',
 			x: 120,
 			y: 100,
@@ -158,7 +159,7 @@ export class Stage0 extends Stage {
 			color: COLOR_DANGER,
 			strength: 100_000_000,
 		}));
-		this.addEntity(portal);
+		this.addItem(portal);
 		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
 		console.log('set up');
 	}
@@ -169,34 +170,38 @@ export class Stage0 extends Stage {
 
 		let obstacleAndPortalAreColliding = false;
 
-		this.sim.update(dt, (entityA, entityB, result) => {
+		this.sim.update(dt, (itemA, itemB, result) => {
 			// TODO make a better system
 			if (
-				(entityA === controlled && entityB.color === COLOR_DANGER) ||
-				(entityB === controlled && entityA.color === COLOR_DANGER)
+				(itemA === controlled && itemB.color === COLOR_DANGER) ||
+				(itemB === controlled && itemA.color === COLOR_DANGER)
 			) {
 				this.restart();
 			} else if (
 				place === 'inside' &&
-				((entityA === controlled && links.has(entityB)) ||
-					(entityB === controlled && links.has(entityA)))
+				((itemA === controlled && links.has(itemB)) || (itemB === controlled && links.has(itemA)))
 			) {
-				const href = (entityA === controlled ? entityB : entityA).href;
-				if (href) void this.goToHref(href);
+				const item = itemA === controlled ? itemB : itemA;
+				const {href} = item;
+				if (href) {
+					item.color = COLOR_ROOTED;
+					item.textFill = hslToStr(...COLOR_ROOTED);
+					void this.goToHref(href);
+				}
 			} else if (
-				(entityA === controlled && entityB.color === COLOR_EXIT) ||
-				(entityB === controlled && entityA.color === COLOR_EXIT)
+				(itemA === controlled && itemB.color === COLOR_EXIT) ||
+				(itemB === controlled && itemA.color === COLOR_EXIT)
 			) {
 				this.goInside();
 			} else if (
-				(entityA === obstacle && entityB === portal) ||
-				(entityB === obstacle && entityA === portal)
+				(itemA === obstacle && itemB === portal) ||
+				(itemB === obstacle && itemA === portal)
 			) {
 				obstacle.color = COLOR_ROOTED;
 				portal.color = COLOR_EXIT;
 				obstacleAndPortalAreColliding = true;
 			}
-			collide(entityA, entityB, result);
+			collide(itemA, itemB, result);
 		});
 
 		if (
@@ -209,7 +214,7 @@ export class Stage0 extends Stage {
 		}
 
 		if (controlled) {
-			updateEntityDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
+			updateItemDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
 
 			if (place === 'inside') {
 				if (!portal.body.collides(controlled.body, collisionResult)) {
@@ -227,7 +232,7 @@ export class Stage0 extends Stage {
 		}
 	}
 
-	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed entities get updated and throw errors
+	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed items get updated and throw errors
 	restart(): void {
 		this.shouldRestart = true;
 	}
