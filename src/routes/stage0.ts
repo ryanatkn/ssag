@@ -17,7 +17,11 @@ import {
 	hslToHex,
 	SPEED_MEDIUM,
 	PLAYER_RADIUS,
+	createEntityId,
+	type EntityData,
+	type StageData,
 } from '@feltcoop/dealt';
+
 import {COLOR_DANGER} from './constants';
 import {goto} from '$app/navigation';
 
@@ -36,7 +40,6 @@ export class Stage0 extends Stage {
 	place: 'inside' | 'outside' = 'outside';
 
 	// these are instantiated in `setup`
-	player!: Entity<CircleBody>;
 	bounds!: Entity<PolygonBody>;
 	obstacle!: Entity<CircleBody>;
 	portal!: Entity<CircleBody>;
@@ -44,67 +47,33 @@ export class Stage0 extends Stage {
 
 	links: Set<Entity> = new Set();
 
-	// TODO not calling `setup` first is error-prone
-	override async setup(): Promise<void> {
-		const collisions = (this.collisions = new Collisions());
-		this.sim = new Simulation(collisions);
+	static override toInitialData(): Partial<StageData> {
+		const entities: Array<Partial<EntityData>> = [];
+		const data: Partial<StageData> = {freezeCamera: true, entities};
 
-		// create the controllable player
-		const player = (this.player = new Entity(collisions, {
-			type: 'circle',
+		const controlled = {
+			type: 'circle', // TODO needs type safety, should error when omitted
+			id: createEntityId(),
 			x: 100,
 			y: 147,
 			radius: PLAYER_RADIUS,
 			speed: SPEED_MEDIUM,
 			color: COLOR_PLAYER,
-		}));
-		this.addEntity(player);
+		} satisfies Partial<EntityData>;
+		entities.push(controlled);
+		data.controlled = controlled.id;
 
-		// create the bounds around the stage edges
-		const bounds = (this.bounds = new Entity(collisions, {
-			type: 'polygon',
-			x: 0,
-			y: 0,
-			points: [
-				[0, 0],
-				[1, 0],
-				[1, 1],
-				[0, 1],
-			],
-			invisible: true,
-			ghostly: true,
-			scale_x: this.$camera.width,
-			scale_y: this.$camera.height,
-		}));
-		this.addEntity(bounds);
-
-		// TODO create these programmatically from data
-
-		// create some things
-		const obstacle = (this.obstacle = new Entity(collisions, {
+		entities.push({
 			type: 'circle',
 			x: 150,
 			y: 110,
-			radius: player.radius * 4,
+			radius: controlled.radius * 4,
 			speed: 0.03,
-		}));
-		this.addEntity(obstacle);
-
-		// create the exit portal
-		const portal = (this.portal = new Entity(collisions, {
-			type: 'circle',
-			x: 120,
-			y: 100,
-			radius: player.radius / 3,
-			color: COLOR_DANGER,
-			strength: 100_000_000,
-		}));
-		this.addEntity(portal);
-		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
-		console.log('set up');
+			tags: ['obstacle'],
+		});
 
 		// create some links
-		const link0 = new Entity(collisions, {
+		entities.push({
 			type: 'polygon',
 			x: 150,
 			y: 190,
@@ -124,13 +93,61 @@ export class Stage0 extends Stage {
 			fontFamily: 'monospace',
 			href: 'https://control.ssag.dev/',
 		});
-		this.addEntity(link0);
-		this.links.add(link0);
+
+		console.log(`toInitialData`, data);
+
+		return data;
+	}
+
+	// TODO not calling `setup` first is error-prone
+	override async setup(): Promise<void> {
+		const collisions = (this.collisions = new Collisions());
+		this.sim = new Simulation(collisions);
+
+		// TODO do this better, maybe with `tags` automatically, same with `bounds`
+		for (const entity of this.entityById.values()) {
+			if (entity.href !== undefined) {
+				this.links.add(entity);
+			}
+			if (entity.tags?.has('obstacle')) {
+				this.obstacle = entity as Entity<CircleBody>;
+			}
+		}
+
+		// create the bounds around the stage edges
+		const bounds = (this.bounds = new Entity(collisions, {
+			type: 'polygon',
+			x: 0,
+			y: 0,
+			points: [
+				[0, 0],
+				[1, 0],
+				[1, 1],
+				[0, 1],
+			],
+			invisible: true,
+			ghostly: true,
+			scale_x: this.$camera.width,
+			scale_y: this.$camera.height,
+		}));
+		this.addEntity(bounds);
+
+		// create the exit portal
+		const portal = (this.portal = new Entity(collisions, {
+			type: 'circle',
+			x: 120,
+			y: 100,
+			radius: PLAYER_RADIUS / 3,
+			color: COLOR_DANGER,
+			strength: 100_000_000,
+		}));
+		this.addEntity(portal);
+		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
+		console.log('set up');
 	}
 
 	override update(dt: number): void {
-		const {controller, player, obstacle, portal, place, links} = this;
-
+		const {controller, controlled, obstacle, portal, place, links} = this;
 		super.update(dt);
 
 		let obstacleAndPortalAreColliding = false;
@@ -138,19 +155,20 @@ export class Stage0 extends Stage {
 		this.sim.update(dt, (entityA, entityB, result) => {
 			// TODO make a better system
 			if (
-				(entityA === player && entityB.color === COLOR_DANGER) ||
-				(entityB === player && entityA.color === COLOR_DANGER)
+				(entityA === controlled && entityB.color === COLOR_DANGER) ||
+				(entityB === controlled && entityA.color === COLOR_DANGER)
 			) {
 				this.restart();
 			} else if (
 				place === 'inside' &&
-				((entityA === player && links.has(entityB)) || (entityB === player && links.has(entityA)))
+				((entityA === controlled && links.has(entityB)) ||
+					(entityB === controlled && links.has(entityA)))
 			) {
-				const href = (entityA === player ? entityB : entityA).href;
+				const href = (entityA === controlled ? entityB : entityA).href;
 				if (href) void this.goToHref(href);
 			} else if (
-				(entityA === player && entityB.color === COLOR_EXIT) ||
-				(entityB === player && entityA.color === COLOR_EXIT)
+				(entityA === controlled && entityB.color === COLOR_EXIT) ||
+				(entityB === controlled && entityA.color === COLOR_EXIT)
 			) {
 				this.goInside();
 			} else if (
@@ -161,7 +179,6 @@ export class Stage0 extends Stage {
 				portal.color = COLOR_EXIT;
 				obstacleAndPortalAreColliding = true;
 			}
-			console.log(`place`, place);
 			collide(entityA, entityB, result);
 		});
 
@@ -174,15 +191,22 @@ export class Stage0 extends Stage {
 			portal.color = COLOR_DANGER;
 		}
 
-		updateEntityDirection(controller, player, this.$camera, this.$viewport, this.$layout);
+		if (controlled) {
+			updateEntityDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
+			console.log(
+				`controlled.directionX, controlled.directionY`,
+				controlled.directionX,
+				controlled.directionY,
+			);
 
-		if (this.place === 'inside') {
-			if (!portal.body.collides(player.body, collisionResult)) {
-				this.goOutside();
-			}
-		} else {
-			if (!this.bounds.body.collides(player.body, collisionResult)) {
-				this.restart();
+			if (place === 'inside') {
+				if (!portal.body.collides(controlled.body, collisionResult)) {
+					this.goOutside();
+				}
+			} else {
+				if (!this.bounds.body.collides(controlled.body, collisionResult)) {
+					this.restart();
+				}
 			}
 		}
 
@@ -228,7 +252,7 @@ export class Stage0 extends Stage {
 		portal.color = this.portalHitboxOuter.body.collides(obstacle.body, collisionResult)
 			? COLOR_EXIT
 			: COLOR_DANGER;
-		portal.radius = this.player.radius / 3;
+		portal.radius = (this.controlled?.radius ?? PLAYER_RADIUS) / 3;
 		portal.ghostly = false;
 		portal.x = 120;
 		portal.y = 100;

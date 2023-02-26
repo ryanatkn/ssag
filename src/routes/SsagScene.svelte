@@ -42,6 +42,7 @@
 		settingUp = true;
 		if (stage) destroyStage();
 		stage = new Stage0({exit, camera, viewport, layout});
+		console.log(`createStage`, stage);
 		void stage.setup({stageStates: []});
 		settingUp = false;
 	};
@@ -63,6 +64,6 @@
 {#if stage}
 	{#key stage}
 		<World {stage} {pixi} />
-		<SurfaceWithController controller={stage.controller} />
 	{/key}
+	<SurfaceWithController controller={stage.controller} />
 {/if}
