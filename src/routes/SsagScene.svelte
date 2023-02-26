@@ -6,7 +6,7 @@
 		setViewport,
 		SurfaceWithController,
 		getPixi,
-		createCameraStore,
+		createCamera,
 		getLayout,
 		Stage,
 		type ExitStage,
@@ -25,7 +25,8 @@
 	// Scenes control the `viewport` and `camera`.
 	const viewport = setViewport(writable({width: viewportSize, height: viewportSize}));
 	$: viewport.set({width: viewportSize, height: viewportSize});
-	const camera = createCameraStore();
+	const camera = createCamera();
+	camera.setPosition(WORLD_SIZE / 2, WORLD_SIZE / 2);
 	$: camera.setDimensions(WORLD_SIZE, WORLD_SIZE, $viewport.width, $viewport.height);
 
 	let stage: Stage | undefined | null;
@@ -41,6 +42,7 @@
 		settingUp = true;
 		if (stage) destroyStage();
 		stage = new Stage0({exit, camera, viewport, layout});
+		console.log(`createStage`, stage);
 		void stage.setup({stageStates: []});
 		settingUp = false;
 	};
@@ -62,6 +64,6 @@
 {#if stage}
 	{#key stage}
 		<World {stage} {pixi} />
-		<SurfaceWithController controller={stage.controller} />
 	{/key}
+	<SurfaceWithController controller={stage.controller} />
 {/if}
