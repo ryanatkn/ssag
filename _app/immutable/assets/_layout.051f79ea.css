@@ -931,6 +931,8 @@ summary:active {
 	--button_color_hover: var(--tint_light_5);
 }
 :root {
+	color-scheme: dark;
+
 	--bg: hsl(23, 37%, 13%);
 	--text_color: hsl(23, 8%, 85%);
 	--text_color_light: hsl(23, 8%, 65%);
