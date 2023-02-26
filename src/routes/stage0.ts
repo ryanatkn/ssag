@@ -150,6 +150,16 @@ export class Stage0 extends Stage {
 		const {controller, controlled, obstacle, portal, place, links} = this;
 		super.update(dt);
 
+		if (controlled)
+			console.log(
+				`controlled.directionX, controlled.directionY`,
+				controlled!.directionX,
+				controlled!.directionY,
+				controlled!.x,
+				controlled!.y,
+				controlled!.speed,
+			);
+
 		let obstacleAndPortalAreColliding = false;
 
 		this.sim.update(dt, (entityA, entityB, result) => {
@@ -193,11 +203,14 @@ export class Stage0 extends Stage {
 
 		if (controlled) {
 			updateEntityDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
-			console.log(
-				`controlled.directionX, controlled.directionY`,
-				controlled.directionX,
-				controlled.directionY,
-			);
+			// console.log(
+			// 	`controlled.directionX, controlled.directionY`,
+			// 	controlled.directionX,
+			// 	controlled.directionY,
+			// 	controlled.x,
+			// 	controlled.y,
+			// 	controlled.speed,
+			// );
 
 			if (place === 'inside') {
 				if (!portal.body.collides(controlled.body, collisionResult)) {
@@ -213,11 +226,6 @@ export class Stage0 extends Stage {
 		if (this.shouldRestart) {
 			this.exit({next_stage: meta.name});
 		}
-	}
-
-	render(renderer: Renderer): void {
-		renderer.clear();
-		renderer.render(this.sim.entities);
 	}
 
 	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed entities get updated and throw errors
