@@ -8,13 +8,15 @@ import {
 	collide,
 	collisionResult,
 	type StageMeta,
-	type EntityCircle,
-	type EntityPolygon,
+	type CircleBody,
+	type PolygonBody,
 	type Renderer,
 	COLOR_ROOTED,
 	COLOR_EXIT,
 	COLOR_DEFAULT,
 	hslToHex,
+	SPEED_MEDIUM,
+	PLAYER_RADIUS,
 } from '@feltcoop/dealt';
 import {COLOR_DANGER} from './constants';
 import {goto} from '$app/navigation';
@@ -34,11 +36,11 @@ export class Stage0 extends Stage {
 	place: 'inside' | 'outside' = 'outside';
 
 	// these are instantiated in `setup`
-	player!: Entity<EntityCircle>;
-	bounds!: Entity<EntityPolygon>;
-	obstacle!: Entity<EntityCircle>;
-	portal!: Entity<EntityCircle>;
-	portalHitboxOuter!: Entity<EntityCircle>;
+	player!: Entity<CircleBody>;
+	bounds!: Entity<PolygonBody>;
+	obstacle!: Entity<CircleBody>;
+	portal!: Entity<CircleBody>;
+	portalHitboxOuter!: Entity<CircleBody>;
 
 	links: Set<Entity> = new Set();
 
@@ -48,66 +50,81 @@ export class Stage0 extends Stage {
 		this.sim = new Simulation(collisions);
 
 		// create the controllable player
-		const player = (this.player = new Entity(
-			collisions.createCircle(100, 147, this.playerRadius) as EntityCircle,
-		));
-		player.speed = 0.2;
-		player.color = COLOR_PLAYER;
+		const player = (this.player = new Entity(collisions, {
+			type: 'circle',
+			x: 100,
+			y: 147,
+			radius: PLAYER_RADIUS,
+			speed: SPEED_MEDIUM,
+			color: COLOR_PLAYER,
+		}));
 		this.addEntity(player);
 
 		// create the bounds around the stage edges
-		const bounds = (this.bounds = new Entity(
-			collisions.createPolygon(0, 0, [
+		const bounds = (this.bounds = new Entity(collisions, {
+			type: 'polygon',
+			x: 0,
+			y: 0,
+			points: [
 				[0, 0],
 				[1, 0],
 				[1, 1],
 				[0, 1],
-			]) as EntityPolygon,
-		));
-		bounds.invisible = true;
-		bounds.ghostly = true;
-		bounds.body.scale_x = this.$camera.width;
-		bounds.body.scale_y = this.$camera.height;
+			],
+			invisible: true,
+			ghostly: true,
+			scale_x: this.$camera.width,
+			scale_y: this.$camera.height,
+		}));
 		this.addEntity(bounds);
 
 		// TODO create these programmatically from data
 
 		// create some things
-		const obstacle = (this.obstacle = new Entity(
-			collisions.createCircle(150, 110, player.radius * 4) as EntityCircle,
-		));
-		obstacle.speed = 0.03;
+		const obstacle = (this.obstacle = new Entity(collisions, {
+			type: 'circle',
+			x: 150,
+			y: 110,
+			radius: player.radius * 4,
+			speed: 0.03,
+		}));
 		this.addEntity(obstacle);
 
 		// create the exit portal
-		const portal = (this.portal = new Entity(
-			collisions.createCircle(120, 100, player.radius / 3) as EntityCircle,
-		));
-		portal.color = COLOR_DANGER;
-		portal.strength = 100_000_000;
+		const portal = (this.portal = new Entity(collisions, {
+			type: 'circle',
+			x: 120,
+			y: 100,
+			radius: player.radius / 3,
+			color: COLOR_DANGER,
+			strength: 100_000_000,
+		}));
 		this.addEntity(portal);
 		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
 		console.log('set up');
 
 		// create some links
-		const link0 = new Entity(
-			collisions.createPolygon(150, 190, [
+		const link0 = new Entity(collisions, {
+			type: 'polygon',
+			x: 150,
+			y: 190,
+			points: [
 				[-55, -13],
 				[55, -13],
 				[55, 13],
 				[-55, 13],
-			]) as EntityPolygon,
-		);
-		link0.invisible = true;
-		link0.ghostly = true;
-		link0.color = COLOR_EXIT;
-		link0.body.scale_x = 1;
-		link0.body.scale_y = 1;
-		link0.text = 'control';
-		link0.textFill = hslToHex(...COLOR_EXIT);
-		link0.fontFamily = 'monospace';
+			],
+			invisible: true,
+			ghostly: true,
+			color: COLOR_EXIT,
+			scale_x: 1,
+			scale_y: 1,
+			text: 'control',
+			textFill: hslToHex(...COLOR_EXIT),
+			fontFamily: 'monospace',
+			href: 'https://control.ssag.dev/',
+		});
 		this.addEntity(link0);
-		(link0 as any).href = 'https://control.ssag.dev/'; // TODO upstream
 		this.links.add(link0);
 	}
 
@@ -129,8 +146,8 @@ export class Stage0 extends Stage {
 				place === 'inside' &&
 				((entityA === player && links.has(entityB)) || (entityB === player && links.has(entityA)))
 			) {
-				const href: string = ((entityA === player ? entityB : entityA) as any).href; // TODO type upstream
-				void this.goToHref(href);
+				const href = (entityA === player ? entityB : entityA).href;
+				if (href) void this.goToHref(href);
 			} else if (
 				(entityA === player && entityB.color === COLOR_EXIT) ||
 				(entityB === player && entityA.color === COLOR_EXIT)
