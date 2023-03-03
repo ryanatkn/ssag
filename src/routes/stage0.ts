@@ -11,6 +11,7 @@ import {
 	COLOR_ROOTED,
 	COLOR_EXIT,
 	COLOR_DEFAULT,
+	COLOR_DANGER,
 	hslToHex,
 	PLAYER_RADIUS,
 	createItemId,
@@ -20,10 +21,9 @@ import {
 	hslToStr,
 } from '@feltcoop/dealt';
 
-import {COLOR_DANGER} from './constants';
 import {goto} from '$app/navigation';
 
-// TODO rewrite this to use a route Svelte component? `dealt.dev/membrane/home`
+// TODO rewrite this to use a route Svelte component?
 
 // TODO what if this file were named `home.stage.ts` instead of `stage0.ts` ?
 
@@ -62,12 +62,12 @@ export class Stage0 extends Stage {
 		data.controlled = controlled.id;
 
 		items.push({
+			tags: ['obstacle'],
 			type: 'circle',
 			x: 150,
 			y: 110,
 			radius: controlled.radius * 4,
 			speed: 0.03,
-			tags: ['obstacle'],
 		});
 
 		// create some links
@@ -84,8 +84,6 @@ export class Stage0 extends Stage {
 			invisible: true,
 			ghostly: true,
 			color: COLOR_EXIT,
-			scale_x: 1,
-			scale_y: 1,
 			text: 'control',
 			textFill: hslToHex(...COLOR_EXIT),
 			fontFamily: 'monospace',
@@ -104,8 +102,6 @@ export class Stage0 extends Stage {
 			invisible: true,
 			ghostly: true,
 			color: COLOR_EXIT,
-			scale_x: 1,
-			scale_y: 1,
 			text: 'source',
 			textFill: hslToHex(...COLOR_EXIT),
 			fontFamily: 'monospace',
@@ -113,27 +109,8 @@ export class Stage0 extends Stage {
 			href: 'https://github.com/ryanatkn/ssag',
 		});
 
-		console.log(`toInitialData`, data);
-
-		return data;
-	}
-
-	// TODO not calling `setup` first is error-prone
-	override async setup(): Promise<void> {
-		const {collisions} = this;
-
-		// TODO do this better, maybe with `tags` automatically, same with `bounds`
-		for (const item of this.itemById.values()) {
-			if (item.href !== undefined) {
-				this.links.add(item);
-			}
-			if (item.tags?.has('obstacle')) {
-				this.obstacle = item as Item<CircleBody>;
-			}
-		}
-
-		// create the bounds around the stage edges
-		const bounds = (this.bounds = new Item(collisions, {
+		items.push({
+			tags: ['bounds'],
 			type: 'polygon',
 			x: 0,
 			y: 0,
@@ -145,27 +122,51 @@ export class Stage0 extends Stage {
 			],
 			invisible: true,
 			ghostly: true,
-			scale_x: this.$camera.width,
-			scale_y: this.$camera.height,
-		}));
-		this.addItem(bounds);
+		});
 
-		// create the exit portal
-		const portal = (this.portal = new Item(collisions, {
+		items.push({
+			tags: ['portal'],
 			type: 'circle',
 			x: 120,
 			y: 100,
 			radius: PLAYER_RADIUS / 3,
 			color: COLOR_DANGER,
 			strength: 100_000_000,
-		}));
-		this.addItem(portal);
-		this.portalHitboxOuter = this.createCircleOuterHitbox(portal, 1);
+		});
+
+		console.log(`toInitialData`, data);
+
+		return data;
+	}
+
+	// TODO not calling `setup` first is error-prone
+	override async setup(): Promise<void> {
+		// TODO do this better, maybe with `tags` automatically, same with `bounds`
+		for (const item of this.itemById.values()) {
+			if (item.href !== undefined) {
+				this.links.add(item);
+			}
+			if (item.$tags) {
+				for (const tag of item.$tags)
+					if (tag === 'obstacle') {
+						this.obstacle = item as Item<CircleBody>;
+					} else if (tag === 'portal') {
+						this.portal = item as Item<CircleBody>;
+						this.portalHitboxOuter = this.createCircleOuterHitbox(this.portal, 1);
+					} else if (tag === 'bounds') {
+						this.bounds = item as Item<PolygonBody>;
+						this.bounds.scale_x.set(this.$camera.width);
+						this.bounds.scale_y.set(this.$camera.height);
+						console.log(`this.bounds.scale_x`, this.bounds.$scale_x);
+					}
+			}
+		}
+
 		console.log('set up');
 	}
 
 	override update(dt: number): void {
-		const {controller, controlled, obstacle, portal, place, links} = this;
+		const {controller, $controlled, obstacle, portal, place, links} = this;
 		super.update(dt);
 
 		let obstacleAndPortalAreColliding = false;
@@ -173,32 +174,33 @@ export class Stage0 extends Stage {
 		this.sim.update(dt, (itemA, itemB, result) => {
 			// TODO make a better system
 			if (
-				(itemA === controlled && itemB.color === COLOR_DANGER) ||
-				(itemB === controlled && itemA.color === COLOR_DANGER)
+				(itemA === $controlled && itemB.$color === COLOR_DANGER) ||
+				(itemB === $controlled && itemA.$color === COLOR_DANGER)
 			) {
 				this.restart();
+				console.log('restarting for danger');
 			} else if (
 				place === 'inside' &&
-				((itemA === controlled && links.has(itemB)) || (itemB === controlled && links.has(itemA)))
+				((itemA === $controlled && links.has(itemB)) || (itemB === $controlled && links.has(itemA)))
 			) {
-				const item = itemA === controlled ? itemB : itemA;
-				const {href} = item;
-				if (href) {
-					item.color = COLOR_ROOTED;
-					item.textFill = hslToStr(...COLOR_ROOTED);
-					void this.goToHref(href);
+				const item = itemA === $controlled ? itemB : itemA;
+				const {$href} = item;
+				if ($href) {
+					item.color.set(COLOR_ROOTED);
+					item.textFill.set(hslToStr(...COLOR_ROOTED));
+					void this.goToHref($href);
 				}
 			} else if (
-				(itemA === controlled && itemB.color === COLOR_EXIT) ||
-				(itemB === controlled && itemA.color === COLOR_EXIT)
+				(itemA === $controlled && itemB.$color === COLOR_EXIT) ||
+				(itemB === $controlled && itemA.$color === COLOR_EXIT)
 			) {
 				this.goInside();
 			} else if (
 				(itemA === obstacle && itemB === portal) ||
 				(itemB === obstacle && itemA === portal)
 			) {
-				obstacle.color = COLOR_ROOTED;
-				portal.color = COLOR_EXIT;
+				obstacle.color.set(COLOR_ROOTED);
+				portal.color.set(COLOR_EXIT);
 				obstacleAndPortalAreColliding = true;
 			}
 			collide(itemA, itemB, result);
@@ -206,23 +208,24 @@ export class Stage0 extends Stage {
 
 		if (
 			!obstacleAndPortalAreColliding &&
-			obstacle.color === COLOR_ROOTED &&
-			!this.portalHitboxOuter.body.collides(obstacle.body, collisionResult)
+			obstacle.$color === COLOR_ROOTED &&
+			!this.portalHitboxOuter.$body.collides(obstacle.$body, collisionResult)
 		) {
-			obstacle.color = COLOR_DEFAULT;
-			portal.color = COLOR_DANGER;
+			obstacle.color.set(COLOR_DEFAULT);
+			portal.color.set(COLOR_DANGER);
 		}
 
-		if (controlled) {
-			updateItemDirection(controller, controlled, this.$camera, this.$viewport, this.$layout);
+		if ($controlled) {
+			updateItemDirection(controller, $controlled, this.$camera, this.$viewport, this.$layout);
 
 			if (place === 'inside') {
-				if (!portal.body.collides(controlled.body, collisionResult)) {
+				if (!portal.$body.collides($controlled.$body, collisionResult)) {
 					this.goOutside();
 				}
 			} else {
-				if (!this.bounds.body.collides(controlled.body, collisionResult)) {
+				if (!this.bounds.$body.collides($controlled.$body, collisionResult)) {
 					this.restart();
+					console.log('restarting for result');
 				}
 			}
 		}
@@ -240,37 +243,41 @@ export class Stage0 extends Stage {
 	// TODO refactor all of this
 	goInside(): void {
 		if (this.place === 'inside') return;
+		console.log('going inside');
 		this.place = 'inside';
 		const {obstacle, portal} = this;
-		obstacle.invisible = true;
-		obstacle.ghostly = true;
-		portal.color = COLOR_DEFAULT;
-		portal.radius = 250 / 2; // TODO animate the radius
-		portal.ghostly = true;
-		portal.x = 125;
-		portal.y = 125;
+		obstacle.invisible.set(true);
+		obstacle.ghostly.set(true);
+		portal.color.set(COLOR_DEFAULT);
+		portal.radius.set(250 / 2); // TODO animate the radius
+		portal.ghostly.set(true);
+		portal.x.set(125);
+		portal.y.set(125);
 		for (const link of this.links) {
-			link.invisible = false;
-			link.ghostly = false;
+			link.invisible.set(false);
+			link.ghostly.set(false);
 		}
 	}
 
 	goOutside(): void {
 		if (this.place === 'outside') return;
+		console.log('going outside');
 		this.place = 'outside';
 		const {obstacle, portal} = this;
-		obstacle.invisible = false;
-		obstacle.ghostly = false;
-		portal.color = this.portalHitboxOuter.body.collides(obstacle.body, collisionResult)
-			? COLOR_EXIT
-			: COLOR_DANGER;
-		portal.radius = (this.controlled?.radius ?? PLAYER_RADIUS) / 3;
-		portal.ghostly = false;
-		portal.x = 120;
-		portal.y = 100;
+		obstacle.invisible.set(false);
+		obstacle.ghostly.set(false);
+		portal.color.set(
+			this.portalHitboxOuter.$body.collides(obstacle.$body, collisionResult)
+				? COLOR_EXIT
+				: COLOR_DANGER,
+		);
+		portal.radius.set((this.$controlled?.$radius ?? PLAYER_RADIUS) / 3);
+		portal.ghostly.set(false);
+		portal.x.set(120);
+		portal.y.set(100);
 		for (const link of this.links) {
-			link.invisible = true;
-			link.ghostly = true;
+			link.invisible.set(true);
+			link.ghostly.set(true);
 		}
 	}
 
