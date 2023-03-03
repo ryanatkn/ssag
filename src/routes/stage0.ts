@@ -5,7 +5,6 @@ import {
 	updateItemDirection,
 	collide,
 	collisionResult,
-	type StageMeta,
 	type CircleBody,
 	type PolygonBody,
 	COLOR_ROOTED,
@@ -25,13 +24,11 @@ import {goto} from '$app/navigation';
 
 // TODO rewrite this to use a Svelte component?
 
-const meta: StageMeta = {
-	name: 'stage0',
-	icon: '🐭',
-};
-
 export class Stage0 extends Stage {
-	static override meta = meta;
+	static override meta = {
+		name: 'stage0',
+		icon: '🐭',
+	};
 
 	place: 'inside' | 'outside' = 'outside';
 
@@ -229,7 +226,7 @@ export class Stage0 extends Stage {
 		}
 
 		if (this.shouldRestart) {
-			this.exit({next_stage: meta.name});
+			this.exit({next_stage: Stage0.meta.name});
 		}
 	}
 
