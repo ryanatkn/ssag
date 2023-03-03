@@ -21,6 +21,7 @@ import {
 } from '@feltcoop/dealt';
 
 import {goto} from '$app/navigation';
+import {WORLD_SIZE} from '$routes/constants';
 
 // TODO rewrite this to use a Svelte component?
 
@@ -115,6 +116,8 @@ export class Stage0 extends Stage {
 				[1, 1],
 				[0, 1],
 			],
+			scale_x: WORLD_SIZE,
+			scale_y: WORLD_SIZE,
 			invisible: true,
 			ghostly: true,
 		});
@@ -147,17 +150,17 @@ export class Stage0 extends Stage {
 						this.obstacle = item as Item<CircleBody>;
 					} else if (tag === 'portal') {
 						this.portal = item as Item<CircleBody>;
-						this.portalHitboxOuter = this.createCircleOuterHitbox(this.portal, 1);
 					} else if (tag === 'bounds') {
 						this.bounds = item as Item<PolygonBody>;
-						this.bounds.scale_x.set(this.$camera.width);
-						this.bounds.scale_y.set(this.$camera.height);
-						console.log(`this.bounds.scale_x`, this.bounds.$scale_x);
 					}
 			}
 		}
 
-		console.log('set up');
+		this.portalHitboxOuter = this.createCircleOuterHitbox(this.portal, 1);
+
+		console.log(`0A`, this.bounds.$body.collides(this.$controlled!.$body, collisionResult));
+
+		console.log('set up', this.bounds, this.obstacle, this.portal);
 	}
 
 	override update(dt: number): void {
@@ -197,6 +200,7 @@ export class Stage0 extends Stage {
 				obstacle.color.set(COLOR_ROOTED);
 				portal.color.set(COLOR_EXIT);
 				obstacleAndPortalAreColliding = true;
+				console.log(`01A`, this.bounds.$body.collides(this.$controlled!.$body));
 			}
 			collide(itemA, itemB, result);
 		});
@@ -219,8 +223,12 @@ export class Stage0 extends Stage {
 				}
 			} else {
 				if (!this.bounds.$body.collides($controlled.$body, collisionResult)) {
+					console.log('restarting for result', this.bounds.$body);
+					console.log(
+						`this.bounds.$body.collides($controlled.$body, collisionResult)`,
+						this.bounds.$body.collides($controlled.$body, collisionResult),
+					);
 					this.restart();
-					console.log('restarting for result');
 				}
 			}
 		}
@@ -232,6 +240,7 @@ export class Stage0 extends Stage {
 
 	shouldRestart = false; // this is a flag because we want to do it after updating, otherwise disposed items get updated and throw errors
 	restart(): void {
+		console.log(`A`, this.bounds.$body.collides(this.$controlled!.$body, collisionResult));
 		this.shouldRestart = true;
 	}
 
