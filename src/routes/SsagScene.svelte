@@ -13,14 +13,13 @@
 	} from '@feltcoop/dealt';
 
 	import {Stage0} from '$routes/stage0';
+	import {WORLD_SIZE} from '$routes/constants';
 
 	export let pixi = getPixi();
 	export let layout = getLayout();
 
 	let viewportSize = Math.min($layout.width, $layout.height);
 	$: viewportSize = Math.min($layout.width, $layout.height);
-
-	const WORLD_SIZE = 256;
 
 	// Scenes control the `viewport` and `camera`.
 	const viewport = setViewport(writable({width: viewportSize, height: viewportSize}));
